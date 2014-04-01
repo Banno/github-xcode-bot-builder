@@ -38,11 +38,13 @@ def delete(args)
   end
 
   def sync_github(args)
-    client = Octokit::Client.new(:access_token => BotConfig.instance.github_access_token)
+    client = Octokit::Client.new(:access_token => @configuration.github_access_token)
     client.login
+    
+    bot_builder = BotBuilder.new(@configuration.xcode)
 
     @configuration.repos.each do |repo|
-      github = BotGithub.new(client, repo)
+      github = BotGithub.new(client, bot_builder, repo)
       github.sync
     end
   end

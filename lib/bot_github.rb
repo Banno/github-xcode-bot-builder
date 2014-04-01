@@ -5,18 +5,18 @@ require 'bot_builder'
 require 'ostruct'
 
 class BotGithub
-  attr_accessor :repo, :client
+  attr_accessor :client, :bot_builder, :repo
 
-  def initialize(repo, client)
-    self.repo = repo
+  def initialize(client, bot_builder, repo)
     self.client = client
+    self.bot_builder = bot_builder
+    self.repo = repo
   end
-
 
   def sync
     puts "\nStarting Github Xcode Bot Builder #{Time.now}\n-----------------------------------------------------------"
 
-    bot_statuses = BotBuilder.instance.status_of_all_bots
+    bot_statuses = self.bot_builder.status_of_all_bots
     bots_processed = []
     pull_requests.each do |pr|
       # Check if a bot exists for this PR
@@ -24,11 +24,10 @@ class BotGithub
       bots_processed << pr.bot_short_name
       if (bot.nil?)
         # Create a new bot
-        BotBuilder.instance.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch,
-                                       self.repo.github_url,
-                                       BotConfig.instance.xcode_project_or_workspace,
-                                       BotConfig.instance.xcode_scheme,
-                                       BotConfig.instance.xcode_devices)
+        self.bot_builder.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch,
+                                    self.repo.github_url,
+                                    self.repo.xcode_project_or_workspace,
+                                    self.repo.xcode_scheme)
         create_status_new_build(pr)
       else
         github_state_cur = latest_github_state(pr).state # :unknown :pending :success :error :failure
@@ -42,7 +41,7 @@ class BotGithub
           create_status(pr, github_state_new, convert_bot_status_to_github_description(bot), bot.status_url)
         elsif (github_state_cur == :unknown || user_requested_retest(pr, bot))
           # Unknown state occurs when there's a new commit so trigger a new build
-          BotBuilder.instance.start_bot(bot.guid)
+          bot_builder.start_bot(bot.guid)
           create_status_new_build(pr)
         else
           puts "PR #{pr.number} (#{github_state_cur}) is up to date for bot #{bot.short_name}"
@@ -55,7 +54,7 @@ class BotGithub
     bots_unprocessed.each do |bot_short_name|
       bot = bot_statuses[bot_short_name]
       # TODO: BotBuilder.instance.remove_outdated_bots(self.repo)
-      BotBuilder.instance.delete_bot(bot.guid) unless !is_managed_bot(bot)
+      self.bot_builder.delete_bot(bot.guid) unless !is_managed_bot(bot)
     end
 
     puts "-----------------------------------------------------------\nFinished Github Xcode Bot Builder #{Time.now}\n"
@@ -136,9 +135,9 @@ class BotGithub
       pull_request.state = response.state
       pull_request.number = response.number
       pull_request.updated_at = response.updated_at
-      pull_request.bot_short_name = bot_short_name(pr)
-      pull_request.bot_short_name_without_version = bot_short_name_without_version(pr)
-      pull_request.bot_long_name = bot_long_name(pr)
+      pull_request.bot_short_name = bot_short_name(pull_request)
+      pull_request.bot_short_name_without_version = bot_short_name_without_version(pull_request)
+      pull_request.bot_long_name = bot_long_name(pull_request)
       pull_request
     end
   end

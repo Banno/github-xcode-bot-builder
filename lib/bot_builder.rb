@@ -9,7 +9,11 @@ require 'singleton'
 require 'ostruct'
 
 class BotBuilder
-  include Singleton
+  attr_accessor :xcode
+
+  def initialize(xcode)
+    self.xcode = xcode
+  end
 
   def delete_bot(guid)
     success = false
@@ -23,7 +27,8 @@ class BotBuilder
     end
   end
 
-  def create_bot(short_name, long_name, branch, scm_url, project_path, scheme_name, devices = [])
+  def create_bot(short_name, long_name, branch, scm_url, project_path, scheme_name)
+    devices = self.xcode.unit_test_devices.split('|')
     device_guids = find_guids_for_devices(devices)
     if (device_guids.count != devices.count)
       puts "Some of the following devices could not be found on the server: #{devices}"
@@ -58,9 +63,9 @@ class BotBuilder
                     pollForSCMChanges: false,
                     buildOnTrigger: false,
                     buildFromClean: true,
-                    integratePerformsAnalyze: BotConfig.instance.xcode_run_analyzer,
-                    integratePerformsTest: BotConfig.instance.xcode_run_test,
-                    integratePerformsArchive: BotConfig.instance.xcode_create_archive,
+                    integratePerformsAnalyze: @xcode.run_analyzer,
+                    integratePerformsTest: @xcode.run_tests,
+                    integratePerformsArchive: @xcode.create_archive,
                     deviceSpecification: "specificDevices",
                     deviceInfo: device_guids
                 },
@@ -103,7 +108,7 @@ class BotBuilder
     statuses = {}
     results.each do |result|
       bot = OpenStruct.new result['entity']
-      bot.status_url = "http://#{BotConfig.instance.xcode_server_hostname}/xcode/bots/#{bot.tinyID}"
+      bot.status_url = "http://#{@xcode.server}/xcode/bots/#{bot.tinyID}"
       bot.latest_run_status = (bot.latestRunStatus.nil? || bot.latestRunStatus.empty?) ? :unknown : bot.latestRunStatus.to_sym
       bot.latest_run_sub_status = (bot.latestRunSubStatus.nil? || bot.latestRunSubStatus.empty?) ? :unknown : bot.latestRunSubStatus.to_sym
       bot.short_name = bot.tinyID
@@ -176,7 +181,7 @@ class BotBuilder
   def get_session_guid
     # Get the guid
     if (@session_guid == nil)
-      response = Net::HTTP.get_response(URI.parse("http://#{BotConfig.instance.xcode_server_hostname}/xcode"))
+      response = Net::HTTP.get_response(URI.parse("http://#{@xcode.server}/xcode"))
       cookies = CGI::Cookie::parse(response['set-cookie'])
       @session_guid = cookies['cc.collabd_session_guid']
     end
@@ -188,7 +193,7 @@ class BotBuilder
         type: 'com.apple.BatchServiceRequest' ,
         requests: service_requests
     }
-    http = Net::HTTP.new(BotConfig.instance.xcode_server_hostname)
+    http = Net::HTTP.new(@xcode.server)
     request = Net::HTTP::Put.new('/collabdproxy')
     request['Content-Type'] = 'application/json; charset=UTF-8'
     request['Cookie'] = "cc.collabd_session_guid=#{@session_guid}"
