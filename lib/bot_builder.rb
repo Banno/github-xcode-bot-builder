@@ -64,7 +64,7 @@ class BotBuilder
                     buildOnTrigger: false,
                     buildFromClean: true,
                     integratePerformsAnalyze: @xcode.run_analyzer,
-                    integratePerformsTest: @xcode.run_tests,
+                    integratePerformsTest: @xcode.run_test,
                     integratePerformsArchive: @xcode.create_archive,
                     deviceSpecification: "specificDevices",
                     deviceInfo: device_guids

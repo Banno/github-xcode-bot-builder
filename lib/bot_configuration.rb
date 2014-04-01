@@ -4,7 +4,7 @@ require 'pp'
 Repository = Struct.new(:github_url, :github_repo, :xcode_scheme, :xcode_project_or_workspace) do
 end
 
-XCode = Struct.new(:server, :run_analyzer, :run_tests, :create_archive, :unit_test_devices) do
+XCode = Struct.new(:server, :run_analyzer, :run_test, :create_archive, :unit_test_devices) do
 end
 
 class BotConfiguration
@@ -21,7 +21,7 @@ class BotConfiguration
 	end
 
 	def load_xcode
-		@xcode = XCode.new(@data['xcode_server'], @data['xcode_run_analyzer'], @data['xcode_run_tests'], @data['xcode_create_archive'], @data['unit_test_devices'])
+		@xcode = XCode.new(@data['xcode_server'], @data['xcode_run_analyzer'], @data['xcode_run_test'], @data['xcode_create_archive'], @data['unit_test_devices'])
 	end
 
 	def load_repos
