@@ -21,32 +21,45 @@ def initialize()
 end
 
 def delete(args)
-    guid = args[0]
-    if (guid == nil || guid.empty?)
-      $stderr.puts "Missing guid of bot to delete"
-      exit 1
-    end
-    BotBuilder.instance.delete_bot guid
+  guid = args[0]
+  if (guid == nil || guid.empty?)
+    $stderr.puts "Missing guid of bot to delete"
+    exit 1
   end
+  BotBuilder.instance.delete_bot guid
+end
 
-  def status(args)
-    BotBuilder.instance.status
+def status(args)
+  BotBuilder.instance.status
+end
+
+def devices(args)
+  BotBuilder.instance.devices
+end
+
+def xcode_config(xcode, repo)
+  config = xcode
+  if repo.run_analyzer != nil
+    config.run_analyzer = repo.run_analyzer
   end
-
-  def devices(args)
-    BotBuilder.instance.devices
+  if repo.run_test != nil
+    config.run_test = repo.run_test
   end
-
-  def sync_github(args)
-    client = Octokit::Client.new(:access_token => @configuration.github_access_token)
-    client.login
-    
-    bot_builder = BotBuilder.new(@configuration.xcode)
-
-    @configuration.repos.each do |repo|
-      github = BotGithub.new(client, bot_builder, repo)
-      github.sync
-    end
+  if repo.create_archive != nil
+    config.create_archive = repo.create_archive
   end
+  config
+end
+
+def sync_github(args)
+  client = Octokit::Client.new(:access_token => @configuration.github_access_token)
+  client.login
+  @configuration.repos.each do |repo|
+    xcode = xcode_config(@configuration.xcode, repo)
+    bot_builder = BotBuilder.new(xcode)
+    github = BotGithub.new(client, bot_builder, repo)
+    github.sync
+  end
+end
 
 end

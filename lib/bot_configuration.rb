@@ -1,7 +1,7 @@
 require 'json'
 require 'pp'
 
-Repository = Struct.new(:github_url, :github_repo, :xcode_scheme, :xcode_project_or_workspace) do
+Repository = Struct.new(:github_url, :github_repo, :xcode_scheme, :xcode_project_or_workspace, :run_analyzer, :run_test, :create_archive) do
 end
 
 XCode = Struct.new(:server, :run_analyzer, :run_test, :create_archive, :unit_test_devices) do
@@ -32,7 +32,7 @@ class BotConfiguration
 			@repos = nil
 		else
 			@repos = repos.collect do |repo|
-				Repository.new(repo["github_url"], repo["github_repo"], repo["xcode_scheme"], repo["xcode_project_or_workspace"])
+				Repository.new(repo["github_url"], repo["github_repo"], repo["xcode_scheme"], repo["xcode_project_or_workspace"], repo['xcode_run_analyzer'], repo['xcode_run_test'], repo['xcode_create_archive'])
 			end
 		end
 	end
