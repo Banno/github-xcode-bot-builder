@@ -115,6 +115,7 @@ class BotBuilder
       bot.latest_run_sub_status = (bot.latestRunSubStatus.nil? || bot.latestRunSubStatus.empty?) ? :unknown : bot.latestRunSubStatus.to_sym
       bot.short_name = bot.tinyID
       bot.short_name_without_version = bot.short_name.sub(/_v\d*$/, '_v')
+      bot.scheme = result["entity"]["extendedAttributes"]["buildSchemeName"]
       bot.repo_path = result["entity"]["extendedAttributes"]["scmInfo"]["\/"]["scmRepoPath"]
       bot.pull_request = nil
       if match = bot.short_name_without_version.match(/([0-9]+)_.*/i)
