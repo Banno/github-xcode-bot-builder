@@ -1,27 +1,23 @@
 require 'json'
 require 'pp'
 
-Repository = Struct.new(:github_url, :github_repo, :xcode_scheme, :xcode_project_or_workspace, :run_analyzer, :run_test, :create_archive) do
+Repository = Struct.new(:github_repo, :project_or_workspace, :bots) do
 end
 
-XCode = Struct.new(:server, :run_analyzer, :run_test, :create_archive, :unit_test_devices) do
+Bot = Struct.new(:scheme, :run_analyzer, :run_test, :create_archive, :devices) do
 end
 
 class BotConfiguration
 	attr_accessor :github_access_token
+	attr_accessor :xcode_server
 	attr_accessor :repos
-	attr_accessor :xcode
 
 	def initialize(fileName)
 		@filename = File.expand_path(fileName)
 		@data = JSON.parse(File.read(@filename))
 		@github_access_token = @data["github_access_token"]
-		load_xcode
+		@xcode_server = @data["xcode_server"]
 		load_repos
-	end
-
-	def load_xcode
-		@xcode = XCode.new(@data['xcode_server'], @data['xcode_run_analyzer'], @data['xcode_run_test'], @data['xcode_create_archive'], @data['unit_test_devices'])
 	end
 
 	def load_repos
@@ -32,7 +28,10 @@ class BotConfiguration
 			@repos = nil
 		else
 			@repos = repos.collect do |repo|
-				Repository.new(repo["github_url"], repo["github_repo"], repo["xcode_scheme"], repo["xcode_project_or_workspace"], repo['xcode_run_analyzer'], repo['xcode_run_test'], repo['xcode_create_archive'])
+				bots = repo["bots"].collect do |bot|
+					Bot.new(bot["scheme"], bot["run_analyzer"], bot["run_test"], bot["create_archive"], bot["unit_test_devices"])
+				end
+				Repository.new(repo["github_repo"], repo["project_or_workspace"], bots)
 			end
 		end
 	end
@@ -40,6 +39,6 @@ end
 
 
 if __FILE__ == $0
-	c = BotConfiguration.new('~/Desktop/test.json')
+	c = BotConfiguration.new('~/xcode_bot_builder.json')
 	pp c.repos
 end

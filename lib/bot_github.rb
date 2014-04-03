@@ -5,12 +5,25 @@ require 'bot_builder'
 require 'ostruct'
 
 class BotGithub
-  attr_accessor :client, :bot_builder, :repo
+  attr_accessor :client, :bot_builder, :github_repo, :scheme
 
-  def initialize(client, bot_builder, repo)
+  def initialize(client, bot_builder, github_repo, scheme)
     self.client = client
     self.bot_builder = bot_builder
-    self.repo = repo
+    self.github_repo = github_repo
+    self.scheme = scheme
+  end
+
+  def bots_for_pull_request(bot_statuses, github_url, pr)
+    bot_statuses.map do |bot_short_name_without_version, bot|
+      if (bot.pull_request == pr.number && bot.repo_path == github_url)
+        bot
+      end
+    end.compact
+  end
+
+  def github_url(github_repo)
+    "git@github.com:#{github_repo}.git"
   end
 
   def sync
@@ -24,14 +37,13 @@ class BotGithub
       bots_processed << pr.bot_short_name
       if (bot.nil?)
         # Create a new bot
-        self.bot_builder.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch,
-                                    self.repo.github_url,
-                                    self.repo.xcode_project_or_workspace,
-                                    self.repo.xcode_scheme)
+        self.bot_builder.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch, github_url(github_repo))
         create_status_new_build(pr)
       else
+        bots = bots_for_pull_request(bot_statuses, github_url(github_repo), pr)
         github_state_cur = latest_github_state(pr).state # :unknown :pending :success :error :failure
-        github_state_new = convert_bot_status_to_github_state(bot)
+        github_state_new = convert_all_bot_status_to_github_state(bots)
+
         if (github_state_new == :pending && github_state_cur != github_state_new)
           # User triggered a new build by clicking Integrate on the Xcode server interface
           create_status(pr, github_state_new, convert_bot_status_to_github_description(bot), bot.status_url)
@@ -72,6 +84,33 @@ class BotGithub
     github_description
   end
 
+  def convert_all_bot_status_to_github_state(bots_for_pull_request)
+    error = false
+    failure = false
+    success = false
+    bots_for_pull_request.each do |bot| 
+      case convert_bot_status_to_github_state(bot)
+      when :error
+        error = true
+      when :failure
+        failure = true
+      when :success
+        success = true
+      end
+    end
+
+    if error
+      return :error
+    elsif failure
+      return :failure
+    elsif success
+      return :success
+    else
+      return :error
+    end
+
+  end
+
   def convert_bot_status_to_github_state(bot)
     bot_run_status = bot.latest_run_status # :unknown :running :completed
     bot_run_sub_status = bot.latest_run_sub_status # :unknown :build-failed :build-errors :test-failures :warnings :analysis-issues :succeeded
@@ -92,7 +131,7 @@ class BotGithub
   def create_comment_for_bot_status(pr, bot)
     message = "Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot)
     message += "\n#{bot.status_url}"
-    self.client.add_comment(self.repo.github_repo, pr.number, message)
+    self.client.add_comment(self.github_repo, pr.number, message)
     puts "PR #{pr.number} added comment \"#{message}\""
   end
 
@@ -108,12 +147,12 @@ class BotGithub
     if (!target_url.nil?)
       options['target_url'] = target_url
     end
-    @client.create_status(self.repo.github_repo, pr.sha, github_state.to_s, options)
+    @client.create_status(self.github_repo, pr.sha, github_state.to_s, options)
     puts "PR #{pr.number} status updated to \"#{github_state}\" with description \"#{description}\""
   end
 
   def latest_github_state(pr)
-    statuses = self.client.statuses(self.repo.github_repo, pr.sha)
+    statuses = self.client.statuses(self.github_repo, pr.sha)
     status = OpenStruct.new
     if (statuses.count == 0)
       status.state = :unknown
@@ -126,7 +165,7 @@ class BotGithub
   end
 
   def pull_requests
-    responses = self.client.pull_requests(self.repo.github_repo)
+    responses = self.client.pull_requests(self.github_repo)
     responses.collect do |response|
       pull_request = OpenStruct.new
       pull_request.sha = response.head.sha
@@ -146,7 +185,7 @@ class BotGithub
     should_retest = false
 
     # Check for a user retest request comment
-    comments = self.client.issue_comments(self.repo.github_repo, pr.number)
+    comments = self.client.issue_comments(self.github_repo, pr.number)
     latest_retest_time = Time.at(0)
     found_retest_comment = false
     comments.each do |comment|
@@ -173,7 +212,7 @@ class BotGithub
   end
 
   def bot_long_name(pr)
-    "PR #{pr.number} #{pr.title} #{self.repo.github_repo}"
+    "PR #{pr.number} #{pr.title} #{self.github_repo} #{self.scheme}"
   end
 
   def bot_short_name(pr)
@@ -193,7 +232,7 @@ class BotGithub
   end
 
   def bot_short_name_suffix
-    ('_' + self.repo.github_repo.downcase + '_v').gsub(/[^[:alnum:]]/, '_')
+    ('_' + self.github_repo.downcase + '_' + self.scheme.downcase + '_v').gsub(/[^[:alnum:]]/, '_')
   end
 
 end
