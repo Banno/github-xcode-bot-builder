@@ -25,9 +25,10 @@ class BotGithub
     "git@github.com:#{github_repo}.git"
   end
 
-  def sync
+  def sync(update_github)
     puts "\nStarting Github Xcode Bot Builder #{Time.now}\n-----------------------------------------------------------"
 
+    # TODO: Need to clean up update_github, possibly by separating sync into the bot maintenance and github
     bot_statuses = self.bot_builder.status_of_all_bots
     bots_processed = []
     pull_requests.each do |pr|
@@ -41,19 +42,26 @@ class BotGithub
       else
         bots = bots_for_pull_request(bot_statuses, github_url(github_repo), pr)
         github_state_cur = latest_github_state(pr).state # :unknown :pending :success :error :failure
+        github_state_cur = :unknown
         github_state_new = convert_all_bot_status_to_github_state(bots)
 
         if (github_state_new == :pending && github_state_cur != github_state_new)
           # User triggered a new build by clicking Integrate on the Xcode server interface
-          create_status(pr, github_state_new, convert_bot_status_to_github_description(bot), bot.status_url)
+          if update_github
+            create_status(pr, github_state_new, bots)
+          end
         elsif (github_state_new != :unknown && github_state_cur != github_state_new)
-          # Build has passed or failed so update status and comment on the issue
-          create_comment_for_bot_status(pr, bot)
-          create_status(pr, github_state_new, convert_bot_status_to_github_description(bot), bot.status_url)
+          if update_github
+            # Build has passed or failed so update status and comment on the issue
+            create_comment_for_bot_status(pr, bots)
+            create_status(pr, github_state_new, bots) #convert_bot_status_to_github_description(bot), bot.status_url)
+          end
         elsif (github_state_cur == :unknown || user_requested_retest(pr, bot))
           # Unknown state occurs when there's a new commit so trigger a new build
           bot_builder.start_bot(bot.guid)
-          create_status_new_build(pr)
+          if update_github
+            create_status_new_build(pr)
+          end
         else
           puts "PR #{pr.number} (#{github_state_cur}) is up to date for bot #{bot.short_name}"
         end
@@ -83,11 +91,35 @@ class BotGithub
     github_description
   end
 
-  def convert_all_bot_status_to_github_state(bots_for_pull_request)
+  def convert_all_bot_status_to_github_description(bots)
+    description = bots.map do |bot| 
+      case convert_bot_status_to_github_state(bot)
+      when :error
+        bot.scheme + " Error"
+      when :failure
+        bot.scheme + " Failed (" + bot.latest_run_sub_status.to_s + ")"
+      end
+    end.compact
+
+    description.join(", ")
+  end
+
+  def convert_all_bot_status_to_url(bots)
+    bots.each do |bot| 
+      case convert_bot_status_to_github_state(bot)
+      when :error
+        return bot.status_url
+      when :failure
+        return bot.status_url
+      end
+    end
+  end
+
+  def convert_all_bot_status_to_github_state(bots)
     error = false
     failure = false
     success = false
-    bots_for_pull_request.each do |bot| 
+    bots.each do |bot| 
       case convert_bot_status_to_github_state(bot)
       when :error
         error = true
@@ -127,18 +159,24 @@ class BotGithub
     github_state
   end
 
-  def create_comment_for_bot_status(pr, bot)
-    message = bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot)
-    message += "\n#{bot.status_url}"
-    self.client.add_comment(self.github_repo, pr.number, message)
-    puts "PR #{pr.number} added comment \"#{message}\""
+  def create_comment_for_bot_status(pr, bots)
+    message = Array.new
+
+    bots.each do |bot|
+      message.push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
+      message.push("\n#{bot.status_url}")
+    end
+    #self.client.add_comment(self.github_repo, pr.number, message.join("\n"))
+    puts "PR #{pr.number} added comment \"#{message.join("\n")}\""
   end
 
   def create_status_new_build(pr)
     create_status(pr, :pending, "Build Triggered.")
   end
 
-  def create_status(pr, github_state, description = nil, target_url = nil)
+  def create_status(pr, github_state, bots)
+    description = convert_all_bot_status_to_github_description(bots)
+    target_url = convert_all_bot_status_to_url(bots)
     options = {}
     if (!description.nil?)
       options['description'] = description

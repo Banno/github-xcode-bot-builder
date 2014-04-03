@@ -34,7 +34,8 @@ def status(args)
 end
 
 def devices(args)
-  BotBuilder.instance.devices
+  bot_builder = BotBuilder.new(@configuration.xcode_server, nil, nil)
+  bot_builder.devices
 end
 
 def xcode_config(xcode, repo)
@@ -56,10 +57,12 @@ def sync_github(args)
   client.login
 
   @configuration.repos.each do |repo|
+    update_github = true;
     repo.bots.each do |bot|
       bot_builder = BotBuilder.new(@configuration.xcode_server, repo.project_or_workspace, bot)
       github = BotGithub.new(client, bot_builder, repo.github_repo, bot.scheme)
-      github.sync
+      github.sync(update_github)
+      update_github = false
     end
   end
 end
