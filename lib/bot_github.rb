@@ -166,7 +166,7 @@ class BotGithub
       message.push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
       message.push("\n#{bot.status_url}")
     end
-    #self.client.add_comment(self.github_repo, pr.number, message.join("\n"))
+    self.client.add_comment(self.github_repo, pr.number, message.join("\n"))
     puts "PR #{pr.number} added comment \"#{message.join("\n")}\""
   end
 
