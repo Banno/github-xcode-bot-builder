@@ -4,7 +4,6 @@ require 'cgi/cookie'
 require 'SecureRandom'
 require 'json'
 require 'pp'
-require 'bot_config'
 require 'singleton'
 require 'ostruct'
 

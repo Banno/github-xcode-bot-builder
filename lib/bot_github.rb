@@ -1,6 +1,5 @@
 require 'octokit'
 require 'singleton'
-require 'bot_config'
 require 'bot_builder'
 require 'ostruct'
 
