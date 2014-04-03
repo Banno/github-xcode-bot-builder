@@ -17,7 +17,7 @@ end
 class BotCli
 
 def initialize()
-  @configuration = BotConfiguration.new('~/Desktop/test.json')
+  @configuration = BotConfiguration.new('~/xcode_bot_builder.json')
 end
 
 def delete(args)
