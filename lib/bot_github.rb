@@ -169,13 +169,16 @@ class BotGithub
 
     bots.each do |bot|
       github_state = convert_bot_status_to_github_state(bot)
-      messages[github_state].push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
-      messages[github_state].push("#{bot.status_url}\n")
+      if github_state != :unknown && github_state != :pending
+        messages[github_state].push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
+        messages[github_state].push("#{bot.status_url}\n")
+      end
     end
     message = messages.values.join("\n").strip
-
-    self.client.add_comment(self.github_repo, pr.number, message)
-    puts "PR #{pr.number} added comment:\n#{message}"
+    if message.empty?
+      self.client.add_comment(self.github_repo, pr.number, message)
+      puts "PR #{pr.number} added comment:\n#{message}"
+    end
   end
 
   def create_status_new_build(pr, bots)
