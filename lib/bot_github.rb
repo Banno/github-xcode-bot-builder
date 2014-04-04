@@ -39,7 +39,7 @@ class BotGithub
         # Create a new bot
         self.bot_builder.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch, github_url(github_repo))
         if update_github
-          create_status_new_build(pr)
+          create_status_new_build(pr, bots_for_pull_request(bot_statuses, github_url(github_repo), pr))
         end
       else
         bots = bots_for_pull_request(bot_statuses, github_url(github_repo), pr)
@@ -61,7 +61,7 @@ class BotGithub
           # Unknown state occurs when there's a new commit so trigger a new build
           bot_builder.start_bot(bot.guid)
           if update_github
-            create_status_new_build(pr)
+            create_status_new_build(pr, bots)
           end
         else
           puts "PR #{pr.number} (#{github_state_cur}) is up to date for bot #{bot.short_name}"
@@ -168,12 +168,13 @@ class BotGithub
       message.push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
       message.push("#{bot.status_url}\n")
     end
-    self.client.add_comment(self.github_repo, pr.number, message.join("\n").strip)
     puts "PR #{pr.number} added comment:\n#{message.join("\n").strip}"
+    #self.client.add_comment(self.github_repo, pr.number, message.join("\n").strip)
+    
   end
 
-  def create_status_new_build(pr)
-    create_status(pr, :pending, "Build Triggered.")
+  def create_status_new_build(pr, bots)
+    create_status(pr, :pending, bots)
   end
 
   def create_status(pr, github_state, bots)
