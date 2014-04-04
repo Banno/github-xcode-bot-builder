@@ -38,11 +38,12 @@ class BotGithub
       if (bot.nil?)
         # Create a new bot
         self.bot_builder.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch, github_url(github_repo))
-        create_status_new_build(pr)
+        if update_github
+          create_status_new_build(pr)
+        end
       else
         bots = bots_for_pull_request(bot_statuses, github_url(github_repo), pr)
         github_state_cur = latest_github_state(pr).state # :unknown :pending :success :error :failure
-        github_state_cur = :unknown
         github_state_new = convert_all_bot_status_to_github_state(bots)
 
         if (github_state_new == :pending && github_state_cur != github_state_new)
@@ -51,9 +52,9 @@ class BotGithub
             create_status(pr, github_state_new, bots)
           end
         elsif (github_state_new != :unknown && github_state_cur != github_state_new)
-          create_comment_for_bot_status(pr, bots)
           if update_github
             # Build has passed or failed so update status and comment on the issue
+            create_comment_for_bot_status(pr, bots)
             create_status(pr, github_state_new, bots) #convert_bot_status_to_github_description(bot), bot.status_url)
           end
         elsif (github_state_cur == :unknown || user_requested_retest(pr, bot))
@@ -113,6 +114,7 @@ class BotGithub
         return bot.status_url
       end
     end
+    return nil
   end
 
   def convert_all_bot_status_to_github_state(bots)
@@ -164,10 +166,10 @@ class BotGithub
 
     bots.each do |bot|
       message.push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
-      message.push("\n#{bot.status_url}")
+      message.push("#{bot.status_url}\n")
     end
-    self.client.add_comment(self.github_repo, pr.number, message.join("\n"))
-    puts "PR #{pr.number} added comment \"#{message.join("\n")}\""
+    #self.client.add_comment(self.github_repo, pr.number, message.join("\n").strip)
+    puts "PR #{pr.number} added comment:\n#{message.join("\n").strip}"
   end
 
   def create_status_new_build(pr)
