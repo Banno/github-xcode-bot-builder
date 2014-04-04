@@ -169,7 +169,7 @@ class BotGithub
       message.push("#{bot.status_url}\n")
     end
     puts "PR #{pr.number} added comment:\n#{message.join("\n").strip}"
-    #self.client.add_comment(self.github_repo, pr.number, message.join("\n").strip)
+    self.client.add_comment(self.github_repo, pr.number, message.join("\n").strip)
     
   end
 
