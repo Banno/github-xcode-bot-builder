@@ -162,15 +162,20 @@ class BotGithub
   end
 
   def create_comment_for_bot_status(pr, bots)
-    message = Array.new
+    messages = {}
+    messages[:error] = Array.new
+    messages[:failure] = Array.new
+    messages[:success] = Array.new
 
     bots.each do |bot|
-      message.push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
-      message.push("#{bot.status_url}\n")
+      github_state = convert_bot_status_to_github_state(bot)
+      messages[github_state].push(bot.scheme + " Build " + convert_bot_status_to_github_state(bot).to_s.capitalize + ": " + convert_bot_status_to_github_description(bot))
+      messages[github_state].push("#{bot.status_url}\n")
     end
-    puts "PR #{pr.number} added comment:\n#{message.join("\n").strip}"
-    self.client.add_comment(self.github_repo, pr.number, message.join("\n").strip)
-    
+    message = messages.values.join("\n").strip
+
+    self.client.add_comment(self.github_repo, pr.number, message)
+    puts "PR #{pr.number} added comment:\n#{message}"
   end
 
   def create_status_new_build(pr, bots)
@@ -187,7 +192,7 @@ class BotGithub
     if (!target_url.nil?)
       options['target_url'] = target_url
     end
-    @client.create_status(self.github_repo, pr.sha, github_state.to_s, options)
+    self.client.create_status(self.github_repo, pr.sha, github_state.to_s, options)
     puts "PR #{pr.number} status updated to \"#{github_state}\" with description \"#{description}\""
   end
 
