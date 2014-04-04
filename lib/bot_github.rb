@@ -51,9 +51,9 @@ class BotGithub
             create_status(pr, github_state_new, bots)
           end
         elsif (github_state_new != :unknown && github_state_cur != github_state_new)
+          create_comment_for_bot_status(pr, bots)
           if update_github
             # Build has passed or failed so update status and comment on the issue
-            create_comment_for_bot_status(pr, bots)
             create_status(pr, github_state_new, bots) #convert_bot_status_to_github_description(bot), bot.status_url)
           end
         elsif (github_state_cur == :unknown || user_requested_retest(pr, bot))
