@@ -121,6 +121,7 @@ class BotGithub
     error = false
     failure = false
     success = false
+    pending = false
     bots.each do |bot| 
       case convert_bot_status_to_github_state(bot)
       when :error
@@ -129,10 +130,14 @@ class BotGithub
         failure = true
       when :success
         success = true
+      when :pending
+        pending = true
       end
     end
 
-    if error
+    if pending
+      return :pending
+    elsif error
       return :error
     elsif failure
       return :failure
