@@ -180,7 +180,7 @@ class BotGithub
     end
     message = messages.values.join("\n").strip
     unless message.empty?
-      #self.client.add_comment(self.github_repo, pr.number, message)
+      self.client.add_comment(self.github_repo, pr.number, message)
       puts "PR #{pr.number} added comment:\n#{message}"
     end
   end
