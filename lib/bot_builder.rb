@@ -101,7 +101,7 @@ class BotBuilder
     # After completion: latest_run_status "completed" run_sub_status "build-failed|build-errors|test-failures|warnings|analysis-issues|succeeded"
     service_requests = [ service_request('query:', [
         {
-            fields: ['guid','tinyID','latestRunStatus','latestRunSubStatus', 'extendedAttributes'],
+            fields: ['guid','tinyID','latestRunStatus','latestRunSubStatus','longName'],
             entityTypes: ["com.apple.entity.Bot"]
         }
     ], 'SearchService') ]
@@ -115,11 +115,14 @@ class BotBuilder
       bot.latest_run_sub_status = (bot.latestRunSubStatus.nil? || bot.latestRunSubStatus.empty?) ? :unknown : bot.latestRunSubStatus.to_sym
       bot.short_name = bot.tinyID
       bot.short_name_without_version = bot.short_name.sub(/_v\d*$/, '_v')
-      bot.scheme = result["entity"]["extendedAttributes"]["buildSchemeName"]
-      bot.repo_path = result["entity"]["extendedAttributes"]["scmInfo"]["\/"]["scmRepoPath"]
       bot.pull_request = nil
-      if match = bot.short_name_without_version.match(/([0-9]+)_.*/i)
-        bot.pull_request = match.captures[0].to_i
+      bot.github_repo = nil
+      bot.scheme = nil
+      if match = bot.longName.match(/^([^ ]+) #([0-9]+) ([^ ]+) ([^ ]+) ([^ \/]+\/[^ ]+)$/)
+        matches = match.captures
+        bot.pull_request = matches[1].to_i
+        bot.github_repo = matches[4]
+        bot.scheme = matches[2]
       end
       statuses[bot.short_name_without_version] = bot
     end

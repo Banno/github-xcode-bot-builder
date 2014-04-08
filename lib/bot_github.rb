@@ -13,9 +13,9 @@ class BotGithub
     self.scheme = scheme
   end
 
-  def bots_for_pull_request(bot_statuses, github_url, pr)
+  def bots_for_pull_request(bot_statuses, pr)
     bot_statuses.map do |bot_short_name_without_version, bot|
-      if (bot.pull_request == pr.number && bot.repo_path == github_url)
+      if bot.pull_request == pr.number && bot.github_repo == pr.github_repo
         bot
       end
     end.compact
@@ -39,10 +39,10 @@ class BotGithub
         # Create a new bot
         self.bot_builder.create_bot(pr.bot_short_name, pr.bot_long_name, pr.branch, github_url(github_repo))
         if update_github
-          create_status_new_build(pr, bots_for_pull_request(bot_statuses, github_url(github_repo), pr))
+          create_status_new_build(pr, bots_for_pull_request(bot_statuses, pr))
         end
       else
-        bots = bots_for_pull_request(bot_statuses, github_url(github_repo), pr)
+        bots = bots_for_pull_request(bot_statuses, pr)
         github_state_cur = latest_github_state(pr).state # :unknown :pending :success :error :failure
         github_state_new = convert_all_bot_status_to_github_state(bots)
 
@@ -122,7 +122,7 @@ class BotGithub
     failure = false
     success = false
     pending = false
-    bots.each do |bot| 
+    bots.each do |bot|
       case convert_bot_status_to_github_state(bot)
       when :error
         error = true
@@ -224,6 +224,7 @@ class BotGithub
       pull_request.sha = response.head.sha
       pull_request.branch = response.head.ref
       pull_request.title = response.title
+      pull_request.github_repo = github_repo
       pull_request.state = response.state
       pull_request.number = response.number
       pull_request.updated_at = response.updated_at
@@ -265,7 +266,12 @@ class BotGithub
   end
 
   def bot_long_name(pr)
-    "PR #{pr.number} #{pr.title} #{self.github_repo} #{self.scheme}"
+    repo = self.github_repo
+    if match = self.github_repo.match(/^([^ \/]+)\/([^ ]+)$/)
+      repo = match.captures[1]
+    end
+
+    "#{repo} ##{pr.number} #{self.scheme} #{pr.branch} #{self.github_repo}"
   end
 
   def bot_short_name(pr)
