@@ -27,7 +27,6 @@ class BotGithub
 
   def sync(update_github)
     puts "\nStarting Github Xcode Bot Builder #{Time.now}\n-----------------------------------------------------------"
-
     # TODO: Need to clean up update_github, possibly by separating sync into the bot maintenance and github
     bot_statuses = self.bot_builder.status_of_all_bots
     bots_processed = []
@@ -181,7 +180,7 @@ class BotGithub
     end
     message = messages.values.join("\n").strip
     unless message.empty?
-      self.client.add_comment(self.github_repo, pr.number, message)
+      #self.client.add_comment(self.github_repo, pr.number, message)
       puts "PR #{pr.number} added comment:\n#{message}"
     end
   end

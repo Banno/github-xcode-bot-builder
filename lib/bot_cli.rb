@@ -57,12 +57,11 @@ def sync_github(args)
   client.login
 
   @configuration.repos.each do |repo|
-    update_github = true;
-    repo.bots.each do |bot|
+    repo.bots.each_with_index do |bot, index|
       bot_builder = BotBuilder.new(@configuration.xcode_server, repo.project_or_workspace, bot)
       github = BotGithub.new(client, bot_builder, repo.github_repo, bot.scheme)
+      update_github = index == repo.bots.length-1
       github.sync(update_github)
-      update_github = false
     end
   end
 end
