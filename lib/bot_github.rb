@@ -50,17 +50,17 @@ class BotGithub
           if update_github
             create_status(pr, github_state_new, bots)
           end
-        elsif (github_state_new != :unknown && github_state_cur != github_state_new)
-          if update_github
-            # Build has passed or failed so update status and comment on the issue
-            create_comment_for_bot_status(pr, bots)
-            create_status(pr, github_state_new, bots) #convert_bot_status_to_github_description(bot), bot.status_url)
-          end
         elsif (github_state_cur == :unknown || user_requested_retest(pr, bot))
           # Unknown state occurs when there's a new commit so trigger a new build
           bot_builder.start_bot(bot.guid)
           if update_github
             create_status_new_build(pr, bots)
+          end
+        elsif (github_state_new != :unknown && github_state_cur != github_state_new)
+          if update_github
+            # Build has passed or failed so update status and comment on the issue
+            create_comment_for_bot_status(pr, bots)
+            create_status(pr, github_state_new, bots) #convert_bot_status_to_github_description(bot), bot.status_url)
           end
         else
           puts "PR #{pr.number} (#{github_state_cur}) is up to date for bot #{bot.short_name}"
